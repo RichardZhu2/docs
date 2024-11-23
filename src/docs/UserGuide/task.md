@@ -1,8 +1,8 @@
 ---
-title: thing 2
-parent: Hello
+title: Creating a Pipeline
+parent: User Guide
 layout: default
-nav_order: 3
+nav_order: 1
 ---
 
 # Thing!!!!

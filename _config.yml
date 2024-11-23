@@ -3,12 +3,11 @@ description: Concurrent Python made simple
 theme: just-the-docs
 
 url: https://richardzhu2.github.io
-source: pages
+source: src
 
 color_scheme: dark
 
 logo: "/assets/img/pyper.png"
-# Set a path/url to a favicon that will be displayed by the browser
 favicon_ico: "/assets/img/favicon.ico"
 search_enabled: true
 nav_enabled: true
