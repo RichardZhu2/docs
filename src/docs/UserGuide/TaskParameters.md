@@ -3,6 +3,7 @@ title: Task Parameters
 parent: User Guide
 layout: default
 nav_order: 2
+permalink: /docs/UserGuide/TaskParameters
 ---
 
 # Task Parameters

@@ -3,6 +3,7 @@ title: Creating Pipelines
 parent: User Guide
 layout: default
 nav_order: 1
+permalink: /docs/UserGuide/CreatingPipelines
 ---
 
 # Creating Pipelines
@@ -52,7 +53,7 @@ pipeline2 = task(lambda x: x - 1)
 pipeline3 = task(range)
 ```
 
-## What Does a Pipeline Do?
+## Pipeline Usage
 
 In keeping with functional design, a `Pipeline` is itself essentially a function, returning a [Generator](https://wiki.python.org/moin/Generators) object (Python's mechanism for lazily iterating through data).
 
