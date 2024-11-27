@@ -1,0 +1,30 @@
+
+DOCS:
+     * create examples
+          - scrape HackerNews or something. wikipedia crawler?
+          - scrape LinkedIn jobs (something with login, plus NLP)
+          - steam data example. show how flexible the functional paradigm is. use pydantic
+          - file processing (.ts to .mp4 for example)
+          - threaded file-reading and pushing to Postgres
+          - something GPT related
+
+     explain carefully when to use daemon-- see test5
+
+     discuss limitations: when would you not use Pyper?
+          - Pyper is a framework for concurrent programming
+          - It should not be used when concurrency doesn not bring benefits to the program 
+          - mention that concurrency for cpu-bound work doesn't mean anything
+          - Remember that pyper Pipelines are really just functions-- they can be used alongside non pyper functions.
+
+     * draw.io diagrams in the docs
+
+
+support python < 3.11 by implementing asyncio.TaskGroup and ExceptionGroup
+
+
+market on reddit/linkedin/HackerNews/dailydev
+ask some youtubers:
+     - mcoding
+     - arjan
+     - tech with tim
+     - john watson rooney

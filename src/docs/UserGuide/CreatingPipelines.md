@@ -11,7 +11,6 @@ nav_order: 1
 1. TOC
 {:toc}
 
-
 ## The `task` Decorator
 
 A `Pipeline` represents a flow of data. In Pyper, functions are the building blocks used to create pipelines; the simplest way to do so is with the `task` decorator:
@@ -26,7 +25,7 @@ def func(x: int):
 assert isinstance(func, Pipeline)
 ```
 
-This creates a `Pipeline` object consisting of one 'task' (one step of data transformation). Later, pipelines can be combined to form composite pipelines that handle a series of tasks.
+This creates a `Pipeline` object consisting of one 'task' (one step of data transformation). Later, pipelines can be [combined](CombiningPipelines) to form composite pipelines that handle a series of tasks.
 
 The `task` decorator can also be used more dynamically, which is slightly preferable in general as this separates execution logic from the functional definitions themselves:
 
