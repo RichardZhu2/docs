@@ -140,7 +140,7 @@ for output in pipeline():
 
 The parameter `daemon` takes a `boolean` value which determines whether thread workers for the task are [daemon threads](https://www.geeksforgeeks.org/python-daemon-threads/).
 
-The purpose of this parameter is to allow programs to fail fast-- when an error is thrown somewhere, we don't always want to wait for all threads to finish executing, but instead we want the program to exit.
+The purpose of this parameter is to allow programs to fail fast -- when an error is thrown somewhere, we don't always want to wait for all threads to finish executing, but instead we want the program to exit.
 
 The example above allows the main thread to raise a `RuntimeError` immediately. Without specifying `daemon=True`, the program would take ~10 seconds to run, as it would wait for each worker in `step2` to finish its job.
 

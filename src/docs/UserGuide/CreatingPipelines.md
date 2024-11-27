@@ -70,7 +70,7 @@ for output in pipeline(x=0):
 ```
 
 {: .info}
-A Pipeline always takes the input of its first task, and yields each output from its last task.
+A Pipeline always takes the input of its first task, and yields each output from its last task
 
 A pipeline that generates _multiple_ outputs can be created through functions that use `yield`:
 
