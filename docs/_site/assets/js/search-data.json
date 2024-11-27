@@ -1,0 +1,163 @@
+{"0": {
+    "doc": "Combining Pipelines",
+    "title": "Combining Pipelines",
+    "content": ". | Piping and the | Operator | Consumer Functions and the &gt; Operator | Asynchronous Code | . ",
+    "url": "/docs/UserGuide/CombiningPipelines",
+    
+    "relUrl": "/docs/UserGuide/CombiningPipelines"
+  },"1": {
+    "doc": "Combining Pipelines",
+    "title": "Piping and the | Operator",
+    "content": "The | operator (inspired by UNIX syntax) is used to pipe one pipeline into another. This is syntactic sugar for the Pipeline.pipe method. from pyper import task, Pipeline p1 = task(lambda x: x + 1) p2 = task(lambda x: 2 * x) p3 = task(lambda x: x - 1) new_pipeline = p1 | p2 | p3 assert isinstance(new_pipeline, Pipeline) # OR new_pipeline = p1.pipe(p2).pipe(p3) assert isinstance(new_pipeline, Pipeline) . Intuitively, this represents defining a new function that: . | takes the inputs of the first task | takes the outputs of each task and passes them as the inputs of the next task | finally, generates each output from the last task | . Composite pipelines can of course be combined further. p0 = task(lambda x: x) p4 = task(lambda x: x ** 2) new_new_pipeline = p0 | new_pipeline | p4 new_new_new_pipeline = new_pipeline | new_new_pipeline . ",
+    "url": "/docs/UserGuide/CombiningPipelines#piping-and-the--operator",
+    
+    "relUrl": "/docs/UserGuide/CombiningPipelines#piping-and-the--operator"
+  },"2": {
+    "doc": "Combining Pipelines",
+    "title": "Consumer Functions and the &gt; Operator",
+    "content": "It is often useful to define resuable functions that process the results of a pipeline, which we’ll call a ‘consumer’. For example: . import json from typing import Dict, Iterable from pyper import task @task def step1(limit: int): for i in range(limit): yield {\"data\": i} @task def step2(data: Dict): return data | {\"hello\": \"world\"} class JsonFileWriter: def __init__(self, filepath): self.filepath = filepath def __call__(self, data: Iterable[Dict]): data_list = list(data) with open(self.filepath, 'w', encoding='utf-8') as f: json.dump(data_list, f, indent=4) pipeline = step1 | step2 # The pipeline writer = JsonFileWriter(\"data.json\") # A consumer writer(pipeline(limit=10)) # Run . The &gt; operator (again inspired by UNIX syntax) is used to pipe a Pipeline into a consumer function (any callable that takes a data stream) returning simply a function that handles the ‘run’ operation. This is syntactic sugar for the Pipeline.consume method. run = step1 | step2 &gt; JsonFileWriter(\"data.json\") run(limit=10) # OR run = step1.pipe(step2).consume(JsonFileWriter(\"data.json\")) run(limit=10) . The operator &gt; is obviously not to be taken to mean ‘greater than’ when used in these contexts. Pyper comes with fantastic IDE intellisense support which understands these operators, and will always show you what the resulting type of a variable is (including the input and output type specs for pipelines) . ",
+    "url": "/docs/UserGuide/CombiningPipelines#consumer-functions-and-the--operator",
+    
+    "relUrl": "/docs/UserGuide/CombiningPipelines#consumer-functions-and-the--operator"
+  },"3": {
+    "doc": "Combining Pipelines",
+    "title": "Asynchronous Code",
+    "content": "Recall that an AsyncPipeline is created from an asynchronous function: . from pyper import task, AsyncPipeline async def func(): yield 1 yield 2 assert isinstance(task(func), AsyncPipeline) . When combining pipelines, the following rule applies: . | Pipeline &gt; Pipeline = Pipeline | Pipeline &gt; AsyncPipeline = AsyncPipeline | AsyncPipeline &gt; Pipeline = AsyncPipeline | AsyncPipeline &gt; AsyncPipeline = AsyncPipeline | . In other words: . A pipeline that contains at least one asynchronous task becomes asynchronous . This reflects a (sometimes awkward) trait of Python, which is that async and await syntax bleeds everywhere – as soon as one function is defined asynchronously, you often find that many other parts program need to become asynchronous. Hence, the sync vs async decision is usually one made at the start of designing an application. The Pyper framework slightly assuages the developer experience by allowing synchronous functions to be used inside of an AsyncPipeline. Pyper will handle unifying synchronous and asynchronous execution under the hood. Consumer functions will, however need to adapt to asynchronous output. For example: . import asyncio import json from typing import Dict, Iterable from pyper import task @task async def step1(limit: int): for i in range(limit): yield {\"data\": i} @task def step2(data: Dict): return data | {\"hello\": \"world\"} class JsonFileWriter: def __init__(self, filepath): self.filepath = filepath async def __call__(self, data: Iterable[Dict]): data_list = [row async for row in data] with open(self.filepath, 'w', encoding='utf-8') as f: json.dump(data_list, f, indent=4) async def main(): run = step1 | step2 &gt; JsonFileWriter(\"data.json\") await run(limit=10) if __name__ == \"__main__\": asyncio.run(main()) . ",
+    "url": "/docs/UserGuide/CombiningPipelines#asynchronous-code",
+    
+    "relUrl": "/docs/UserGuide/CombiningPipelines#asynchronous-code"
+  },"4": {
+    "doc": "Considerations",
+    "title": "Considerations",
+    "content": ". | Just Add More Workers? | To daemon or not to daemon? | . ",
+    "url": "/docs/UserGuide/Considerations",
+    
+    "relUrl": "/docs/UserGuide/Considerations"
+  },"5": {
+    "doc": "Considerations",
+    "title": "Just Add More Workers?",
+    "content": "Pyper is a framework for concurrent programming, so it is worth discussing in a little more detail what the concurrency parameter is doing. Under the hood, this is an integer which determines: . | How many threads to spin up (for a synchronous task) | Or how many asyncio Tasks to create (for an asynchronous task) | . Therefore, a task will only benefit from a higher concurrency value if the function itself fundamentally benefits from concurrent execution. When does a function benefit from concurrency? In short, when it can make progress off the CPU after releasing the GIL, (by doing something that doesn’t require computation) for example by: . | Performing a sleep | Sending a network request | Reading from a database | . A function with this property is referred as IO-bound, whereas a function that hogs the CPU intensely, without releasing the GIL, is called CPU-bound. This includes all ‘heavy-computation’ type operations like: . | Crunching numbers | Parsing text data | Sorting and searching | . Increasing the number of workers for a task does not improve performance if the task is CPU-bound . To experiment for yourself, try running the following script with a range of concurrency values. You’ll notice that a higher concurrency will in fact decrease performance, due to the overhead of creating threads. import time from pyper import task def get_data(limit: int): for i in range(limit): yield i def long_computation(data: int): for i in range(1_000_000): data += i return data def print_sum(data): total = 0 for i in data: total += i print(total) def main(computation_concurrency: int = 1): run = task(get_data, daemon=True) \\ | task(long_computation, concurrency=computation_concurrency, daemon=True) \\ &gt; print_sum run(1000) if __name__ == \"__main__\": main() . ",
+    "url": "/docs/UserGuide/Considerations#just-add-more-workers",
+    
+    "relUrl": "/docs/UserGuide/Considerations#just-add-more-workers"
+  },"6": {
+    "doc": "Considerations",
+    "title": "To daemon or not to daemon?",
+    "content": "The advantage of using daemon threads is that they do not prevent the main program from exiting and therefore allow errors to be raised immediately. The danger of using daemon threads is that they end abruptly when the program terminates, which can lead to memory leaks and improper resource cleanup. Therefore, there is a simple consideration that determines whether to set daemon=True on a particular task: . Tasks can be created with daemon=True when they do NOT reach out to external resources. This includes: . | Pure functions, which simply take an input and generate an output | Functions that depend on or modify some external Python state, like an Object or a Class | . Functions that should not use daemon threads include: . | Writing to a database | Reading from a file | . ",
+    "url": "/docs/UserGuide/Considerations#to-daemon-or-not-to-daemon",
+    
+    "relUrl": "/docs/UserGuide/Considerations#to-daemon-or-not-to-daemon"
+  },"7": {
+    "doc": "Creating Pipelines",
+    "title": "Creating Pipelines",
+    "content": ". | The task Decorator | Pipeline Usage | Asynchronous Code | . ",
+    "url": "/docs/UserGuide/CreatingPipelines",
+    
+    "relUrl": "/docs/UserGuide/CreatingPipelines"
+  },"8": {
+    "doc": "Creating Pipelines",
+    "title": "The task Decorator",
+    "content": "A Pipeline represents a flow of data. In Pyper, functions are the building blocks used to create pipelines; the simplest way to do so is with the task decorator: . from pyper import task, Pipeline @task def func(x: int): return x + 1 assert isinstance(func, Pipeline) . This creates a Pipeline object consisting of one ‘task’ (one step of data transformation). Later, pipelines can be combined to form composite pipelines that handle a series of tasks. The task decorator can also be used more dynamically, which is slightly preferable in general as this separates execution logic from the functional definitions themselves: . from pyper import task def func(x: int): return x + 1 pipeline = task(func) . In addition to functions, anything callable in Python can be wrapped in task in the same way: . from pyper import task class Doubler: def __call__(self, x): return 2 * x pipeline1 = task(Doubler()) pipeline2 = task(lambda x: x - 1) pipeline3 = task(range) . ",
+    "url": "/docs/UserGuide/CreatingPipelines#the-task-decorator",
+    
+    "relUrl": "/docs/UserGuide/CreatingPipelines#the-task-decorator"
+  },"9": {
+    "doc": "Creating Pipelines",
+    "title": "Pipeline Usage",
+    "content": "In keeping with functional design, a Pipeline is itself essentially a function, returning a Generator object (Python’s mechanism for lazily iterating through data). from pyper import task def func(x: int): return x + 1 pipeline = task(func) for output in pipeline(x=0): print(output) # Prints: # 1 . A Pipeline always takes the input of its first task, and yields each output from its last task . A pipeline that generates multiple outputs can be created through functions that use yield: . from pyper import task def func(x: int): yield x + 1 yield x + 2 yield x + 3 pipeline = task(func) for output in pipeline(x=0): print(output) # Prints: # 1 # 2 # 3 . ",
+    "url": "/docs/UserGuide/CreatingPipelines#pipeline-usage",
+    
+    "relUrl": "/docs/UserGuide/CreatingPipelines#pipeline-usage"
+  },"10": {
+    "doc": "Creating Pipelines",
+    "title": "Asynchronous Code",
+    "content": "Asynchronous functions/callables are used to create AsyncPipeline objects, which behave in an intuitively analogous way to Pipeline: . import asyncio from pyper import task async def func(x: int): return x + 1 async def main(): pipeline = task(func) async for output in pipeline(x=0): print(output) asyncio.run(main()) # Prints: # 1 . ",
+    "url": "/docs/UserGuide/CreatingPipelines#asynchronous-code",
+    
+    "relUrl": "/docs/UserGuide/CreatingPipelines#asynchronous-code"
+  },"11": {
+    "doc": "Task Parameters",
+    "title": "Task Parameters",
+    "content": ". | join | concurrency | throttle | daemon | bind | . For convenience, we will use the following terminology on this page: . | Producer: The first task within a pipeline | Producer-consumer: Any task after the first task within a pipeline | . ",
+    "url": "/docs/UserGuide/TaskParameters",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters"
+  },"12": {
+    "doc": "Task Parameters",
+    "title": "join",
+    "content": ". | type: int | default: False | . from typing import Iterable from pyper import task @task def step1(x: int): yield x + 1 yield x + 2 yield x + 3 @task(join=True) def step2(data: Iterable[int]): for item in data: yield item * 2 pipeline = step1 | step2 for output in pipeline(0): print(output) # Prints: # 2 # 4 # 6 . The parameter join takes a boolean value. When False, a producer-consumer takes each individual output from the previous task as input. When True, a producer-consumer takes a stream of inputs from the previous task. A producer cannot have join set as True . A task with join=True can also be run concurrently, which means that multiple workers will pull from the previous task in a thread-safe way. ",
+    "url": "/docs/UserGuide/TaskParameters#join",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters#join"
+  },"13": {
+    "doc": "Task Parameters",
+    "title": "concurrency",
+    "content": ". | type: int | default: 1 | . import time from pyper import task @task def step1(x: int): yield x + 1 yield x + 2 yield x + 3 @task(concurrency=3) def step2(data: int): time.sleep(data) return \"Done\" pipeline = step1 | step2 for output in pipeline(0): print(output) # Runs in ~3 seconds . The parameter concurrency takes a int value which determines the number of workers executing the task concurrently. Note that only IO-bound functions benefit from concurrent execution. A producer cannot have concurrency set greater than 1 . ",
+    "url": "/docs/UserGuide/TaskParameters#concurrency",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters#concurrency"
+  },"14": {
+    "doc": "Task Parameters",
+    "title": "throttle",
+    "content": ". | type: int | default: 0 | . import time from pyper import task @task(throttle=5000) def step1(): for i in range(1_000_000): yield i @task def step2(data: int): time.sleep(10) return data . The parameter throttle takes a int value which determines the maximum queue size between a given task and the next. The purpose of this parameter is to give finer control over memory in situations where: . | A producer/producer-consumer generates data very quickly | A producer-consumer/consumer processes that data very slowly | . In the example above, workers on step1 are paused after 5000 values have been generated, until workers for step2 are ready to start processing again. If no throttle were specified, workers for step1 would quickly flood its output queue with up to 1_000_000 values. ",
+    "url": "/docs/UserGuide/TaskParameters#throttle",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters#throttle"
+  },"15": {
+    "doc": "Task Parameters",
+    "title": "daemon",
+    "content": ". | type: bool | default: False | . import time from pyper import task @task(daemon=True) def step1(): yield 1 yield 2 yield 3 @task(concurrency=3, daemon=True) def step2(data: int): if data == 2: raise RuntimeError(\"An error has occurred\") time.sleep(10) return data pipeline = step1 | step2 for output in pipeline(): print(output) # Raises RuntimeError immediately . The parameter daemon takes a boolean value which determines whether thread workers for the task are daemon threads. The purpose of this parameter is to allow programs to fail fast – when an error is thrown somewhere, we don’t always want to wait for all threads to finish executing, but instead we want the program to exit. The example above allows the main thread to raise a RuntimeError immediately. Without specifying daemon=True, the program would take ~10 seconds to run, as it would wait for each worker in step2 to finish its job. See some considerations for when to set this flag. An asynchronous task cannot have daemon set as True . ",
+    "url": "/docs/UserGuide/TaskParameters#daemon",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters#daemon"
+  },"16": {
+    "doc": "Task Parameters",
+    "title": "bind",
+    "content": ". | type: Optional[Tuple[Tuple, Dict]] | default: None | . from pyper import task def step1(): yield 1 yield 2 yield 3 def step2(data: int, multiplier: int): return data * multiplier pipeline = task(step1) | task(step2, bind=task.bind(multiplier=10)) for output in pipeline(): print(output) # Prints: # 10 # 20 # 30 . The parameter bind allows additional args and kwargs to be bound to a task when creating a pipeline (via functools.partial). Given that each producer-consumer expects to be given one input argument, the purpose of the bind parameter is to allow functions to be defined flexibly in terms of the inputs they wish to take, as well as allowing tasks to access external states, like contexts. task.bind(*args, **kwargs) is a utility method that can be used to supply these additonal arguments. ",
+    "url": "/docs/UserGuide/TaskParameters#bind",
+    
+    "relUrl": "/docs/UserGuide/TaskParameters#bind"
+  },"17": {
+    "doc": "User Guide",
+    "title": "User Guide",
+    "content": " ",
+    "url": "/docs/UserGuide/",
+    
+    "relUrl": "/docs/UserGuide/"
+  },"18": {
+    "doc": "API Reference",
+    "title": "API Reference",
+    "content": "All pipelines in Pyper are created with the pyper.task decorator. See Task Parameters . ",
+    "url": "/docs/ApiReference/",
+    
+    "relUrl": "/docs/ApiReference/"
+  },"19": {
+    "doc": "Examples",
+    "title": "Examples",
+    "content": " ",
+    "url": "/docs/Examples/",
+    
+    "relUrl": "/docs/Examples/"
+  },"20": {
+    "doc": "Home",
+    "title": "Getting Started",
+    "content": "Install the latest version using pip: . $ pip install python-pyper . Note that python-pyper is the pypi registered package. ",
+    "url": "/#getting-started",
+    
+    "relUrl": "/#getting-started"
+  },"21": {
+    "doc": "Home",
+    "title": "Where Next?",
+    "content": ". | Check out the 📖 User Guide to get started with Pyper . | See some 🎯 Examples of possible use cases . | . ",
+    "url": "/#where-next",
+    
+    "relUrl": "/#where-next"
+  },"22": {
+    "doc": "Home",
+    "title": "Home",
+    "content": ". Concurrent Python made simple . Pyper is a generalized framework for concurrent data-processing in Python. Source code is available on Github. ",
+    "url": "/",
+    
+    "relUrl": "/"
+  }
+}
