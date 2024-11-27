@@ -7,7 +7,7 @@ permalink: /
 ---
 
 <p align="center">
-  <img src="../../assets/img/pyper.png" alt="Pyper" style="width: 500px;">
+  <img src="../assets/img/pyper.png" alt="Pyper" style="width: 500px;">
 </p>
 <p align="center" style="font-size: 1.5em;">
     <em>Concurrent Python made simple</em>
